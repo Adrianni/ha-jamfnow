@@ -62,7 +62,7 @@ All services target one or more Jamf Now devices (device picker): `jamfnow.enabl
 
 - Lost Mode and its sound only work on supervised devices.
 - The Lost Mode sound can only be played while Lost Mode is on; the Play sound button handles that for you. The device stays locked until you turn Lost Mode off.
-- Not affiliated with Jamf.
+- Not affiliated with Jamf. The Jamf Now name and logo are trademarks of Jamf and are used here only to identify the service.
 
 ## License
 

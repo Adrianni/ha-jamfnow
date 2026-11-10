@@ -121,6 +121,10 @@
       "name": "Set blueprint",
       "description": "Assign a blueprint to a device.",
       "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The Jamf Now device(s) to send the command to."
+        },
         "blueprint_id": {
           "name": "Blueprint ID",
           "description": "Blueprint id to assign."
@@ -131,6 +135,10 @@
       "name": "Enable Lost Mode",
       "description": "Turn on managed Lost Mode (supervised devices only).",
       "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The Jamf Now device(s) to send the command to."
+        },
         "message": {
           "name": "Message",
           "description": "Message on the lock screen. Defaults to the lock screen message entity."
@@ -151,23 +159,53 @@
     },
     "disable_lost_mode": {
       "name": "Disable Lost Mode",
-      "description": "Turn off managed Lost Mode."
+      "description": "Turn off managed Lost Mode.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The Jamf Now device(s) to send the command to."
+        }
+      }
     },
     "play_sound": {
       "name": "Play sound",
-      "description": "Play the Lost Mode sound. Lost Mode is turned on first if it is not already on."
+      "description": "Play the Lost Mode sound. Lost Mode is turned on first if it is not already on.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The Jamf Now device(s) to send the command to."
+        }
+      }
     },
     "restart_device": {
       "name": "Restart device",
-      "description": "Restart the device."
+      "description": "Restart the device.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The Jamf Now device(s) to send the command to."
+        }
+      }
     },
     "shutdown_device": {
       "name": "Shut down device",
-      "description": "Power off the device."
+      "description": "Power off the device.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The Jamf Now device(s) to send the command to."
+        }
+      }
     },
     "sync_inventory": {
       "name": "Sync inventory",
-      "description": "Trigger an inventory sync on the device."
+      "description": "Trigger an inventory sync on the device.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The Jamf Now device(s) to send the command to."
+        }
+      }
     }
   }
 }

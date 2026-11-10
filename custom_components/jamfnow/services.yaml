@@ -1,54 +1,80 @@
 set_blueprint:
-  target:
-    device:
-      integration: jamfnow
   fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: jamfnow
+          multiple: true
     blueprint_id:
       required: true
-      example: "86136069-bab5-4a9f-893d-a1b2c3d4e5f6"
+      example: 86136069-bab5-4a9f-893d-a1b2c3d4e5f6
       selector:
-        text:
+        text: null
 enable_lost_mode:
-  target:
-    device:
-      integration: jamfnow
   fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: jamfnow
+          multiple: true
     message:
-      example: "Device lost. Call IT."
+      example: Device lost. Call IT.
       selector:
         text:
           multiline: true
     phone:
-      example: "+4712345678"
+      example: '+4712345678'
       selector:
         text:
           type: tel
     footnote:
-      example: "Return to front desk"
+      example: Return to front desk
       selector:
         text:
           multiline: true
     play_sound:
       example: true
       selector:
-        boolean:
+        boolean: null
 disable_lost_mode:
-  target:
-    device:
-      integration: jamfnow
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: jamfnow
+          multiple: true
 play_sound:
-  target:
-    device:
-      integration: jamfnow
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: jamfnow
+          multiple: true
 restart_device:
-  target:
-    device:
-      integration: jamfnow
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: jamfnow
+          multiple: true
 shutdown_device:
-  target:
-    device:
-      integration: jamfnow
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: jamfnow
+          multiple: true
 sync_inventory:
-  target:
-    device:
-      integration: jamfnow
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: jamfnow
+          multiple: true

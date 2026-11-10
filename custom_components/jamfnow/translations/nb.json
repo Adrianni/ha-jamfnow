@@ -121,6 +121,10 @@
       "name": "Sett blueprint",
       "description": "Tildel en blueprint til en enhet.",
       "fields": {
+        "device_id": {
+          "name": "Enhet",
+          "description": "Jamf Now-enheten(e) kommandoen skal sendes til."
+        },
         "blueprint_id": {
           "name": "Blueprint-ID",
           "description": "ID til blueprinten som skal tildeles."
@@ -131,6 +135,10 @@
       "name": "Slå på Lost Mode",
       "description": "Slå på administrert Lost Mode (kun supervised enheter).",
       "fields": {
+        "device_id": {
+          "name": "Enhet",
+          "description": "Jamf Now-enheten(e) kommandoen skal sendes til."
+        },
         "message": {
           "name": "Melding",
           "description": "Melding på låseskjermen. Bruker låseskjermmelding-entiteten hvis tom."
@@ -151,23 +159,53 @@
     },
     "disable_lost_mode": {
       "name": "Slå av Lost Mode",
-      "description": "Slå av administrert Lost Mode."
+      "description": "Slå av administrert Lost Mode.",
+      "fields": {
+        "device_id": {
+          "name": "Enhet",
+          "description": "Jamf Now-enheten(e) kommandoen skal sendes til."
+        }
+      }
     },
     "play_sound": {
       "name": "Spill av lyd",
-      "description": "Spill av Lost Mode-lyden. Lost Mode slås på først hvis det ikke allerede er på."
+      "description": "Spill av Lost Mode-lyden. Lost Mode slås på først hvis det ikke allerede er på.",
+      "fields": {
+        "device_id": {
+          "name": "Enhet",
+          "description": "Jamf Now-enheten(e) kommandoen skal sendes til."
+        }
+      }
     },
     "restart_device": {
       "name": "Start enheten på nytt",
-      "description": "Start enheten på nytt."
+      "description": "Start enheten på nytt.",
+      "fields": {
+        "device_id": {
+          "name": "Enhet",
+          "description": "Jamf Now-enheten(e) kommandoen skal sendes til."
+        }
+      }
     },
     "shutdown_device": {
       "name": "Slå av enheten",
-      "description": "Slå av enheten."
+      "description": "Slå av enheten.",
+      "fields": {
+        "device_id": {
+          "name": "Enhet",
+          "description": "Jamf Now-enheten(e) kommandoen skal sendes til."
+        }
+      }
     },
     "sync_inventory": {
       "name": "Synkroniser inventar",
-      "description": "Start en inventarsynkronisering på enheten."
+      "description": "Start en inventarsynkronisering på enheten.",
+      "fields": {
+        "device_id": {
+          "name": "Enhet",
+          "description": "Jamf Now-enheten(e) kommandoen skal sendes til."
+        }
+      }
     }
   }
 }

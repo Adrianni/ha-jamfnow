@@ -1,23 +1,25 @@
+"""The Jamf Now integration."""
 
 from __future__ import annotations
 
-from typing import Any
-
+import aiohttp
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.helpers import aiohttp_client, device_registry as dr
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady, ServiceValidationError
+from homeassistant.helpers import config_validation as cv, device_registry as dr
 from homeassistant.helpers.typing import ConfigType
 
-from .api import JamfNowAuthError, JamfNowClient
+from .api import JamfNowApiError, JamfNowAuthError, JamfNowClient
 from .const import (
     CONF_BASE_URL,
     DEFAULT_BASE_URL,
     DOMAIN,
     PLATFORMS,
-    SERVICE_ENABLE_LOST_MODE,
     SERVICE_DISABLE_LOST_MODE,
+    SERVICE_ENABLE_LOST_MODE,
+    SERVICE_PLAY_SOUND,
     SERVICE_RESTART_DEVICE,
     SERVICE_SET_BLUEPRINT,
     SERVICE_SHUTDOWN_DEVICE,
@@ -25,16 +27,21 @@ from .const import (
 )
 from .coordinator import JamfNowDataUpdateCoordinator
 
-JamfNowConfigEntry = ConfigEntry
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+DEVICE_SCHEMA = {vol.Required("device_id"): vol.All(cv.ensure_list, [cv.string])}
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    hass.data.setdefault(DOMAIN, {"services_registered": False})
+    """Register the services once for the whole integration."""
+    _register_services(hass)
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: JamfNowConfigEntry) -> bool:
-    session = aiohttp_client.async_get_clientsession(hass)
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    # The shared HA session drops cookies, but the Jamf login relies on a SESSION cookie,
+    # so this entry owns a session with a cookie jar (closed again on unload).
+    session = aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True))
     client = JamfNowClient(
         session=session,
         base_url=entry.data.get(CONF_BASE_URL, DEFAULT_BASE_URL),
@@ -42,161 +49,84 @@ async def async_setup_entry(hass: HomeAssistant, entry: JamfNowConfigEntry) -> b
         password=entry.data[CONF_PASSWORD],
     )
 
-    await client.async_login()
+    try:
+        await client.async_login()
+    except JamfNowAuthError as err:
+        await session.close()
+        raise ConfigEntryAuthFailed(str(err)) from err
+    except JamfNowApiError as err:
+        await session.close()
+        raise ConfigEntryNotReady(str(err)) from err
 
-    coordinator = JamfNowDataUpdateCoordinator(hass, client=client)
-    await coordinator.async_config_entry_first_refresh()
+    coordinator = JamfNowDataUpdateCoordinator(hass, entry, client)
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except Exception:
+        await session.close()
+        raise
 
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = {
-        "client": client,
-        "coordinator": coordinator,
-    }
+    entry.runtime_data = coordinator
+    entry.async_on_unload(session.close)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    if not hass.data[DOMAIN].get("services_registered"):
-        _register_services(hass)
-        hass.data[DOMAIN]["services_registered"] = True
-
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: JamfNowConfigEntry) -> bool:
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id, None)
-    return unload_ok
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+def _resolve_targets(hass: HomeAssistant, call: ServiceCall) -> list[tuple[JamfNowDataUpdateCoordinator, str]]:
+    """Map the selected Home Assistant devices to (coordinator, Jamf device id)."""
+    if call.data.get("entity_id"):
+        raise ServiceValidationError("Select a Jamf Now device, not an entity")
+    registry = dr.async_get(hass)
+    entries = [e for e in hass.config_entries.async_entries(DOMAIN) if hasattr(e, "runtime_data")]
+    targets: list[tuple[JamfNowDataUpdateCoordinator, str]] = []
+    for ha_device_id in call.data["device_id"]:
+        device = registry.async_get(ha_device_id)
+        jamf_id = None
+        if device:
+            jamf_id = next((i[1] for i in device.identifiers if i[0] == DOMAIN), None)
+        if not jamf_id:
+            raise ServiceValidationError(f"{ha_device_id} is not a Jamf Now device")
+        coordinator = next((e.runtime_data for e in entries if e.runtime_data.device_present(jamf_id)), None)
+        if coordinator is None:
+            raise ServiceValidationError(f"Device {jamf_id} not found in Jamf Now data")
+        targets.append((coordinator, jamf_id))
+    return targets
 
 
 def _register_services(hass: HomeAssistant) -> None:
-    async def _resolve_client_and_coordinator(
-        device_id: str,
-    ) -> tuple[JamfNowClient, JamfNowDataUpdateCoordinator] | None:
-        for entry_id, data in hass.data.get(DOMAIN, {}).items():
-            if entry_id == "services_registered":
-                continue
-            coordinator: JamfNowDataUpdateCoordinator = data["coordinator"]
-            if coordinator.device_present(device_id):
-                return data["client"], coordinator
-        return None
+    def _simple(method: str):
+        async def handler(call: ServiceCall) -> None:
+            for coordinator, jamf_id in _resolve_targets(hass, call):
+                await getattr(coordinator, method)(jamf_id)
 
-    def _extract_jamf_device_id(call: ServiceCall) -> str:
-        if call.data.get("entity_id"):
-            raise ValueError("Please select a Jamf Now device, not an entity")
-        device_ids: list[str] = call.data.get("device_id") or []
-        if len(device_ids) != 1:
-            raise ValueError("Select exactly one Jamf Now device")
-        device_id = device_ids[0]
-        registry = dr.async_get(hass)
-        device = registry.async_get(device_id)
-        if not device:
-            raise ValueError(f"Home Assistant device {device_id} not found")
-        for identifier in device.identifiers:
-            if identifier[0] == DOMAIN:
-                return identifier[1]
-        raise ValueError("Device is not a Jamf Now device")
+        return handler
 
     async def handle_set_blueprint(call: ServiceCall) -> None:
-        device_ids: list[str] = call.data.get("device_id") or []
-        if len(device_ids) != 1:
-            raise ValueError("Select exactly one Jamf Now device")
-        jamf_device_id = _extract_jamf_device_id(call)
-        blueprint_id: str = call.data["blueprint_id"]
-        resolved = await _resolve_client_and_coordinator(jamf_device_id)
-        if not resolved:
-            raise ValueError(f"Device {jamf_device_id} not found in Jamf Now data")
-        client, coordinator = resolved
-        await client.async_set_blueprint(jamf_device_id, blueprint_id)
-        await coordinator.async_request_refresh()
+        for coordinator, jamf_id in _resolve_targets(hass, call):
+            await coordinator.async_set_blueprint(jamf_id, call.data["blueprint_id"])
 
     async def handle_enable_lost_mode(call: ServiceCall) -> None:
-        device_ids: list[str] = call.data.get("device_id") or []
-        if len(device_ids) != 1:
-            raise ValueError("Select exactly one Jamf Now device")
-        message: str | None = call.data.get("message")
-        phone: str | None = call.data.get("phone") or ""
-        footnote: str | None = call.data.get("footnote")
-        play_sound: bool | None = call.data.get("play_sound")
-        jamf_device_id = _extract_jamf_device_id(call)
-        resolved = await _resolve_client_and_coordinator(jamf_device_id)
-        if not resolved:
-            raise ValueError(f"Device {jamf_device_id} not found in Jamf Now data")
-        client, coordinator = resolved
-        message_to_send = message or "Lost mode enabled via Home Assistant"
-        device = coordinator.get_device(jamf_device_id)
-        if device and device.supervised is False:
-            raise ValueError("Lost Mode can only be enabled on supervised devices")
-        await client.async_enable_lost_mode(
-            jamf_device_id,
-            message=message_to_send,
-            phone=phone,
-            footnote=footnote,
-            play_sound=play_sound,
-        )
-        await coordinator.async_request_refresh()
+        for coordinator, jamf_id in _resolve_targets(hass, call):
+            await coordinator.async_enable_lost_mode(
+                jamf_id,
+                message=call.data.get("message"),
+                phone=call.data.get("phone"),
+                footnote=call.data.get("footnote"),
+                play_sound=call.data.get("play_sound"),
+            )
 
-    async def handle_restart(call: ServiceCall) -> None:
-        device_ids: list[str] = call.data.get("device_id") or []
-        if len(device_ids) != 1:
-            raise ValueError("Select exactly one Jamf Now device")
-        jamf_device_id = _extract_jamf_device_id(call)
-        resolved = await _resolve_client_and_coordinator(jamf_device_id)
-        if not resolved:
-            raise ValueError(f"Device {jamf_device_id} not found in Jamf Now data")
-        client, coordinator = resolved
-        await client.async_restart_device(jamf_device_id)
-        await coordinator.async_request_refresh()
-
-    async def handle_disable_lost_mode(call: ServiceCall) -> None:
-        device_ids: list[str] = call.data.get("device_id") or []
-        if len(device_ids) != 1:
-            raise ValueError("Select exactly one Jamf Now device")
-        jamf_device_id = _extract_jamf_device_id(call)
-        resolved = await _resolve_client_and_coordinator(jamf_device_id)
-        if not resolved:
-            raise ValueError(f"Device {jamf_device_id} not found in Jamf Now data")
-        client, coordinator = resolved
-        device = coordinator.get_device(jamf_device_id)
-        if device and device.supervised is False:
-            raise ValueError("Lost Mode can only be disabled on supervised devices")
-        await client.async_disable_lost_mode(jamf_device_id)
-        await coordinator.async_request_refresh()
-
-    async def handle_shutdown(call: ServiceCall) -> None:
-        device_ids: list[str] = call.data.get("device_id") or []
-        if len(device_ids) != 1:
-            raise ValueError("Select exactly one Jamf Now device")
-        jamf_device_id = _extract_jamf_device_id(call)
-        resolved = await _resolve_client_and_coordinator(jamf_device_id)
-        if not resolved:
-            raise ValueError(f"Device {jamf_device_id} not found in Jamf Now data")
-        client, coordinator = resolved
-        await client.async_shutdown_device(jamf_device_id)
-        await coordinator.async_request_refresh()
-
-    async def handle_sync_inventory(call: ServiceCall) -> None:
-        device_ids: list[str] = call.data.get("device_id") or []
-        if len(device_ids) != 1:
-            raise ValueError("Select exactly one Jamf Now device")
-        jamf_device_id = _extract_jamf_device_id(call)
-        resolved = await _resolve_client_and_coordinator(jamf_device_id)
-        if not resolved:
-            raise ValueError(f"Device {jamf_device_id} not found in Jamf Now data")
-        client, coordinator = resolved
-        await client.async_sync_inventory(jamf_device_id)
-        await coordinator.async_request_refresh()
+    base = {vol.Optional("entity_id"): cv.match_all, **DEVICE_SCHEMA}
+    simple = vol.Schema(base, extra=vol.ALLOW_EXTRA)
 
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_BLUEPRINT,
         handle_set_blueprint,
-        vol.Schema(
-            {
-                vol.Required("device_id"): [str],
-                vol.Required("blueprint_id"): str,
-            }
-        ),
+        vol.Schema({**base, vol.Required("blueprint_id"): cv.string}, extra=vol.ALLOW_EXTRA),
     )
     hass.services.async_register(
         DOMAIN,
@@ -204,35 +134,20 @@ def _register_services(hass: HomeAssistant) -> None:
         handle_enable_lost_mode,
         vol.Schema(
             {
-                vol.Required("device_id"): [str],
-                vol.Optional("message"): str,
-                vol.Optional("phone"): str,
-                vol.Optional("footnote"): str,
-                vol.Optional("play_sound"): bool,
-            }
+                **base,
+                vol.Optional("message"): cv.string,
+                vol.Optional("phone"): cv.string,
+                vol.Optional("footnote"): cv.string,
+                vol.Optional("play_sound"): cv.boolean,
+            },
+            extra=vol.ALLOW_EXTRA,
         ),
     )
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_RESTART_DEVICE,
-        handle_restart,
-        vol.Schema({vol.Required("device_id"): [str]}),
-    )
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_DISABLE_LOST_MODE,
-        handle_disable_lost_mode,
-        vol.Schema({vol.Required("device_id"): [str]}),
-    )
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_SHUTDOWN_DEVICE,
-        handle_shutdown,
-        vol.Schema({vol.Required("device_id"): [str]}),
-    )
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_SYNC_INVENTORY,
-        handle_sync_inventory,
-        vol.Schema({vol.Required("device_id"): [str]}),
-    )
+    for service, method in (
+        (SERVICE_DISABLE_LOST_MODE, "async_disable_lost_mode"),
+        (SERVICE_PLAY_SOUND, "async_play_sound"),
+        (SERVICE_RESTART_DEVICE, "async_restart"),
+        (SERVICE_SHUTDOWN_DEVICE, "async_power_off"),
+        (SERVICE_SYNC_INVENTORY, "async_sync_inventory"),
+    ):
+        hass.services.async_register(DOMAIN, service, _simple(method), simple)

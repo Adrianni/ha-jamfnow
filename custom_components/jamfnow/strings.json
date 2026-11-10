@@ -3,16 +3,171 @@
     "step": {
       "user": {
         "title": "Jamf Now",
-        "description": "Enter your Jamf Now credentials",
+        "description": "Log in with your Jamf ID (email and password). The account must not require MFA, SSO or passkey for login.\n{detail}",
         "data": {
-          "username": "Username",
+          "username": "Email (Jamf ID)",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Log in to Jamf Now again",
+        "description": "The login for {username} no longer works. Enter the password again.\n{detail}",
+        "data": {
           "password": "Password"
         }
       }
     },
     "error": {
-      "invalid_auth": "Invalid credentials",
-      "cannot_connect": "Failed to connect"
+      "invalid_auth": "Login failed. Check email and password (MFA, SSO and passkey are not supported).",
+      "cannot_connect": "Could not connect to Jamf Now",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This Jamf Now account is already added",
+      "reauth_successful": "Login updated"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Management status"
+      },
+      "os_version": {
+        "name": "OS version"
+      },
+      "blueprint": {
+        "name": "Blueprint"
+      },
+      "last_check_in": {
+        "name": "Last check-in"
+      },
+      "last_inventory": {
+        "name": "Last inventory"
+      },
+      "lost_mode": {
+        "name": "Lost Mode status"
+      },
+      "lost_mode_sound": {
+        "name": "Lost Mode sound status"
+      },
+      "supervised": {
+        "name": "Supervised"
+      },
+      "profile_lock_screen_message": {
+        "name": "Lock screen message profile"
+      },
+      "profile_restriction": {
+        "name": "Restriction profile"
+      },
+      "profile_wifi": {
+        "name": "Wi-Fi profile"
+      },
+      "profile_app_lock": {
+        "name": "App lock profile"
+      },
+      "profile_email": {
+        "name": "Email profile"
+      },
+      "profile_security": {
+        "name": "Security profile"
+      },
+      "profile_web_clip": {
+        "name": "Web clip profile"
+      },
+      "apps_installed": {
+        "name": "Installed apps"
+      },
+      "assigned_user": {
+        "name": "Assigned user"
+      },
+      "enrolled": {
+        "name": "Enrolled"
+      }
+    },
+    "switch": {
+      "lost_mode_switch": {
+        "name": "Lost Mode"
+      }
+    },
+    "text": {
+      "lost_mode_message": {
+        "name": "Lock screen message"
+      },
+      "lost_mode_phone": {
+        "name": "Lock screen phone number"
+      }
+    },
+    "button": {
+      "play_sound": {
+        "name": "Play sound"
+      },
+      "restart": {
+        "name": "Restart"
+      }
+    },
+    "select": {
+      "blueprint_select": {
+        "name": "Blueprint"
+      }
+    },
+    "device_tracker": {
+      "location": {
+        "name": "Location"
+      }
+    }
+  },
+  "services": {
+    "set_blueprint": {
+      "name": "Set blueprint",
+      "description": "Assign a blueprint to a device.",
+      "fields": {
+        "blueprint_id": {
+          "name": "Blueprint ID",
+          "description": "Blueprint id to assign."
+        }
+      }
+    },
+    "enable_lost_mode": {
+      "name": "Enable Lost Mode",
+      "description": "Turn on managed Lost Mode (supervised devices only).",
+      "fields": {
+        "message": {
+          "name": "Message",
+          "description": "Message on the lock screen. Defaults to the lock screen message entity."
+        },
+        "phone": {
+          "name": "Phone number",
+          "description": "Phone number shown on the lock screen."
+        },
+        "footnote": {
+          "name": "Footnote",
+          "description": "Extra text at the bottom of the lock screen."
+        },
+        "play_sound": {
+          "name": "Play sound",
+          "description": "Play a sound immediately."
+        }
+      }
+    },
+    "disable_lost_mode": {
+      "name": "Disable Lost Mode",
+      "description": "Turn off managed Lost Mode."
+    },
+    "play_sound": {
+      "name": "Play sound",
+      "description": "Play the Lost Mode sound. Lost Mode is turned on first if it is not already on."
+    },
+    "restart_device": {
+      "name": "Restart device",
+      "description": "Restart the device."
+    },
+    "shutdown_device": {
+      "name": "Shut down device",
+      "description": "Power off the device."
+    },
+    "sync_inventory": {
+      "name": "Sync inventory",
+      "description": "Trigger an inventory sync on the device."
     }
   }
 }

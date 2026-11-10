@@ -1,6 +1,5 @@
 {
-  "name": "JamfNow",
-  "content_in_root": false,
-  "domain": "jamfnow",
-  "render_readme": true
+  "name": "Jamf Now",
+  "render_readme": true,
+  "homeassistant": "2025.1.0"
 }

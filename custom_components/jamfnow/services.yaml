@@ -1,66 +1,54 @@
 set_blueprint:
-  name: Set Blueprint
-  description: Assign a blueprint to a device.
   target:
     device:
       integration: jamfnow
   fields:
     blueprint_id:
-      description: Blueprint id to assign
-      example: "abcde"
+      required: true
+      example: "86136069-bab5-4a9f-893d-a1b2c3d4e5f6"
       selector:
         text:
 enable_lost_mode:
-  name: Enable Lost Mode
-  description: Turn on managed lost mode for a device with an optional message/phone.
   target:
     device:
       integration: jamfnow
   fields:
     message:
-      description: Message to display on the device lock screen
       example: "Device lost. Call IT."
       selector:
         text:
           multiline: true
     phone:
-      description: Phone number to display on the device
-      example: "+18005551212"
+      example: "+4712345678"
       selector:
         text:
           type: tel
     footnote:
-      description: Additional footer text on the lock screen
       example: "Return to front desk"
       selector:
         text:
           multiline: true
     play_sound:
-      description: Play a sound on the device immediately
       example: true
       selector:
         boolean:
+disable_lost_mode:
+  target:
+    device:
+      integration: jamfnow
+play_sound:
+  target:
+    device:
+      integration: jamfnow
 restart_device:
-  name: Restart Device
-  description: Restart the specified device (service call only).
   target:
     device:
       integration: jamfnow
 shutdown_device:
-  name: Shut Down Device
-  description: Power off the specified device (service call only).
-  target:
-    device:
-      integration: jamfnow
-disable_lost_mode:
-  name: Disable Lost Mode
-  description: Turn off managed lost mode for a device.
   target:
     device:
       integration: jamfnow
 sync_inventory:
-  name: Sync Inventory
-  description: Trigger an inventory sync on the device.
   target:
     device:
       integration: jamfnow

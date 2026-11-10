@@ -1,63 +1,33 @@
+"""Blueprint selection per device."""
 
 from __future__ import annotations
 
-from typing import List
-
 from homeassistant.components.select import SelectEntity
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .api import JamfNowClient, JamfNowDevice
-from .const import DOMAIN
 from .coordinator import JamfNowDataUpdateCoordinator
+from .entity import JamfNowEntity, async_setup_device_entities
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    data = hass.data[DOMAIN][entry.entry_id]
-    coordinator: JamfNowDataUpdateCoordinator = data["coordinator"]
-    client: JamfNowClient = data["client"]
-
-    entities: list[JamfNowBlueprintSelect] = []
-    if coordinator.data:
-        for device in coordinator.data.devices:
-            entities.append(JamfNowBlueprintSelect(coordinator, client, device.id))
-    async_add_entities(entities)
+    async_setup_device_entities(
+        entry,
+        async_add_entities,
+        lambda coordinator, device_id: [JamfNowBlueprintSelect(coordinator, device_id)],
+    )
 
 
-class JamfNowBlueprintSelect(SelectEntity):
+class JamfNowBlueprintSelect(JamfNowEntity, SelectEntity):
+    """Assign the device to another Jamf Now blueprint."""
 
-    _attr_has_entity_name = True
     _attr_translation_key = "blueprint_select"
 
-    def __init__(
-        self,
-        coordinator: JamfNowDataUpdateCoordinator,
-        client: JamfNowClient,
-        device_id: str,
-    ) -> None:
-        self.coordinator = coordinator
-        self.client = client
-        self._device_id = device_id
-        self._attr_unique_id = f"{device_id}_blueprint_select"
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        device = self.coordinator.get_device(self._device_id)
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name=device.name if device else "Jamf Now Device",
-            manufacturer="Apple",
-            model=device.model if device else None,
-            serial_number=device.serial_number if device else None,
-        )
-
-    @property
-    def name(self) -> str | None:
-        device = self.coordinator.get_device(self._device_id)
-        return f"{device.name if device else 'Device'} Blueprint"
+    def __init__(self, coordinator: JamfNowDataUpdateCoordinator, device_id: str) -> None:
+        super().__init__(coordinator, device_id, "blueprint_select")
 
     @property
     def options(self) -> list[str]:
@@ -67,7 +37,7 @@ class JamfNowBlueprintSelect(SelectEntity):
 
     @property
     def current_option(self) -> str | None:
-        device = self.coordinator.get_device(self._device_id)
+        device = self.device
         if not device or not device.blueprint_id or not self.coordinator.data:
             return None
         for bp in self.coordinator.data.blueprints:
@@ -76,9 +46,7 @@ class JamfNowBlueprintSelect(SelectEntity):
         return None
 
     async def async_select_option(self, option: str) -> None:
-        blueprint_id = self._parse_option(option)
-        await self.client.async_set_blueprint(self._device_id, blueprint_id)
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_set_blueprint(self._device_id, self._parse_option(option))
 
     @staticmethod
     def _format_option(name: str, blueprint_id: str) -> str:

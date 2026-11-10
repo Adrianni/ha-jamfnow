@@ -1,0 +1,173 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Jamf Now",
+        "description": "Logg inn med Jamf ID (e-post og passord). Kontoen kan ikke kreve MFA, SSO eller passkey ved innlogging.\n{detail}",
+        "data": {
+          "username": "E-post (Jamf ID)",
+          "password": "Passord"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Logg inn på Jamf Now igjen",
+        "description": "Innloggingen for {username} fungerer ikke lenger. Skriv inn passordet på nytt.\n{detail}",
+        "data": {
+          "password": "Passord"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Innlogging feilet. Sjekk e-post og passord (MFA, SSO og passkey støttes ikke).",
+      "cannot_connect": "Kunne ikke koble til Jamf Now",
+      "unknown": "Uventet feil"
+    },
+    "abort": {
+      "already_configured": "Denne Jamf Now-kontoen er allerede lagt til",
+      "reauth_successful": "Innloggingen er oppdatert"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Administrasjonsstatus"
+      },
+      "os_version": {
+        "name": "OS-versjon"
+      },
+      "blueprint": {
+        "name": "Blueprint"
+      },
+      "last_check_in": {
+        "name": "Siste innsjekk"
+      },
+      "last_inventory": {
+        "name": "Siste inventar"
+      },
+      "lost_mode": {
+        "name": "Lost Mode-status"
+      },
+      "lost_mode_sound": {
+        "name": "Lost Mode lydstatus"
+      },
+      "supervised": {
+        "name": "Supervised"
+      },
+      "profile_lock_screen_message": {
+        "name": "Profil: låseskjermmelding"
+      },
+      "profile_restriction": {
+        "name": "Profil: begrensninger"
+      },
+      "profile_wifi": {
+        "name": "Profil: Wi-Fi"
+      },
+      "profile_app_lock": {
+        "name": "Profil: applås"
+      },
+      "profile_email": {
+        "name": "Profil: e-post"
+      },
+      "profile_security": {
+        "name": "Profil: sikkerhet"
+      },
+      "profile_web_clip": {
+        "name": "Profil: webklipp"
+      },
+      "apps_installed": {
+        "name": "Installerte apper"
+      },
+      "assigned_user": {
+        "name": "Tildelt bruker"
+      },
+      "enrolled": {
+        "name": "Registrert"
+      }
+    },
+    "switch": {
+      "lost_mode_switch": {
+        "name": "Lost Mode"
+      }
+    },
+    "text": {
+      "lost_mode_message": {
+        "name": "Låseskjermmelding"
+      },
+      "lost_mode_phone": {
+        "name": "Telefonnummer på låseskjerm"
+      }
+    },
+    "button": {
+      "play_sound": {
+        "name": "Spill av lyd"
+      },
+      "restart": {
+        "name": "Start på nytt"
+      }
+    },
+    "select": {
+      "blueprint_select": {
+        "name": "Blueprint"
+      }
+    },
+    "device_tracker": {
+      "location": {
+        "name": "Posisjon"
+      }
+    }
+  },
+  "services": {
+    "set_blueprint": {
+      "name": "Sett blueprint",
+      "description": "Tildel en blueprint til en enhet.",
+      "fields": {
+        "blueprint_id": {
+          "name": "Blueprint-ID",
+          "description": "ID til blueprinten som skal tildeles."
+        }
+      }
+    },
+    "enable_lost_mode": {
+      "name": "Slå på Lost Mode",
+      "description": "Slå på administrert Lost Mode (kun supervised enheter).",
+      "fields": {
+        "message": {
+          "name": "Melding",
+          "description": "Melding på låseskjermen. Bruker låseskjermmelding-entiteten hvis tom."
+        },
+        "phone": {
+          "name": "Telefonnummer",
+          "description": "Telefonnummer som vises på låseskjermen."
+        },
+        "footnote": {
+          "name": "Fotnote",
+          "description": "Ekstra tekst nederst på låseskjermen."
+        },
+        "play_sound": {
+          "name": "Spill av lyd",
+          "description": "Spill av lyd umiddelbart."
+        }
+      }
+    },
+    "disable_lost_mode": {
+      "name": "Slå av Lost Mode",
+      "description": "Slå av administrert Lost Mode."
+    },
+    "play_sound": {
+      "name": "Spill av lyd",
+      "description": "Spill av Lost Mode-lyden. Lost Mode slås på først hvis det ikke allerede er på."
+    },
+    "restart_device": {
+      "name": "Start enheten på nytt",
+      "description": "Start enheten på nytt."
+    },
+    "shutdown_device": {
+      "name": "Slå av enheten",
+      "description": "Slå av enheten."
+    },
+    "sync_inventory": {
+      "name": "Synkroniser inventar",
+      "description": "Start en inventarsynkronisering på enheten."
+    }
+  }
+}

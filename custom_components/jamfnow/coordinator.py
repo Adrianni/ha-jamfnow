@@ -179,11 +179,40 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
         )
         await self.async_refresh_after_command()
 
+    async def _passcode_change_blocked(self, device_id: str) -> bool:
+        """True if the device's blueprint has "Prevent changes to passcode" turned on.
+
+        Unknown (no blueprint, or restrictions could not be read) counts as not blocked.
+        """
+        device = self.get_device(device_id)
+        if not device or not device.blueprint_id:
+            return False
+        try:
+            restrictions = await self.client.async_get_restrictions(device.blueprint_id)
+        except JamfNowError as err:
+            _LOGGER.debug("Could not read restrictions for %s: %s", device.blueprint_id, err)
+            return False
+        return restrictions.get("allowPasscodeModification") is False
+
     async def _clear_passcode_first(self, device_id: str) -> None:
+        """Clear the passcode before Lost Mode; skipped (Lost Mode still goes ahead) if blocked."""
+        if await self._passcode_change_blocked(device_id):
+            _LOGGER.warning(
+                "Not clearing the passcode before Lost Mode on %s: its blueprint has "
+                "'Prevent changes to passcode' on. Turn that restriction off in Jamf Now so the "
+                "passcode can be cleared (Lost Mode is still turned on)",
+                device_id,
+            )
+            return
         await self._call(self.client.async_remove_passcode(device_id))
         await asyncio.sleep(CLEAR_PASSCODE_DELAY)
 
     async def async_clear_passcode(self, device_id: str) -> None:
+        if await self._passcode_change_blocked(device_id):
+            raise HomeAssistantError(
+                "The blueprint has 'Prevent changes to passcode' on, so the passcode cannot be "
+                "cleared. Turn that restriction off in Jamf Now first"
+            )
         await self._call(self.client.async_remove_passcode(device_id))
         await self.async_refresh_after_command()
 

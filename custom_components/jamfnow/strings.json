@@ -122,8 +122,8 @@
       }
     },
     "binary_sensor": {
-      "passcode_change_blocked": {
-        "name": "Lost Mode blocked (passcode)"
+      "lost_mode_available": {
+        "name": "Can enable Lost Mode"
       }
     }
   },

@@ -1,8 +1,8 @@
-"""Why Lost Mode cannot be enabled: the blueprint prevents passcode changes."""
+"""Whether Lost Mode can be turned on (the blueprint must allow passcode changes)."""
 
 from __future__ import annotations
 
-from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -17,29 +17,36 @@ async def async_setup_entry(
     async_setup_device_entities(
         entry,
         async_add_entities,
-        lambda coordinator, device_id: [JamfNowPasscodeBlockedSensor(coordinator, device_id)],
+        lambda coordinator, device_id: [JamfNowLostModeAvailableSensor(coordinator, device_id)],
     )
 
 
-class JamfNowPasscodeBlockedSensor(JamfNowEntity, BinarySensorEntity):
-    """On (problem) when "Prevent changes to passcode" is on, which blocks Lost Mode."""
+class JamfNowLostModeAvailableSensor(JamfNowEntity, BinarySensorEntity):
+    """On = Lost Mode can be turned on. Off = the blueprint has "Prevent changes to passcode" on."""
 
-    _attr_translation_key = "passcode_change_blocked"
-    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    _attr_translation_key = "lost_mode_available"
 
     def __init__(self, coordinator: JamfNowDataUpdateCoordinator, device_id: str) -> None:
-        super().__init__(coordinator, device_id, "passcode_change_blocked")
+        super().__init__(coordinator, device_id, "passcode_change_blocked")  # unique id kept
 
     @property
     def is_on(self) -> bool | None:
         device = self.device
         if not device or device.passcode_change_allowed is None:
             return None
-        return not device.passcode_change_allowed
+        return device.passcode_change_allowed
 
     @property
     def extra_state_attributes(self) -> dict[str, str | None] | None:
         device = self.device
         if not device:
             return None
-        return {"blueprint": self.coordinator.blueprint_name(device.blueprint_id)}
+        attrs: dict[str, str | None] = {
+            "blueprint": self.coordinator.blueprint_name(device.blueprint_id)
+        }
+        if device.passcode_change_allowed is False:
+            attrs["reason"] = (
+                "The blueprint has 'Prevent changes to passcode' turned on. Turn it off in "
+                "Jamf Now (Blueprint > Restrictions > Security & Privacy)"
+            )
+        return attrs

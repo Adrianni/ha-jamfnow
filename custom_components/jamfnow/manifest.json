@@ -9,5 +9,5 @@
   "issue_tracker": "https://github.com/Adrianni/ha-jamfnow/issues",
   "loggers": ["custom_components.jamfnow"],
   "requirements": [],
-  "version": "0.5.0"
+  "version": "0.5.1"
 }

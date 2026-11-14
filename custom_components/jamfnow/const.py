@@ -7,6 +7,8 @@ CONF_BASE_URL = "base_url"
 
 DEFAULT_BASE_URL = "https://services-api.services.jamfnow.com"
 UPDATE_INTERVAL_SECONDS = 300
+# Used while Lost Mode is PENDING/REMOVING
+FAST_UPDATE_INTERVAL_SECONDS = 60
 
 # Lost Mode takes a short while to be confirmed by the device (PENDING -> ENABLED)
 LOST_MODE_WAIT_TIMEOUT = 120

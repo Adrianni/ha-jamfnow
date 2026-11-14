@@ -22,6 +22,7 @@ from .api import (
 )
 from .const import (
     DOMAIN,
+    FAST_UPDATE_INTERVAL_SECONDS,
     LOST_MODE_POLL_INTERVAL,
     LOST_MODE_WAIT_TIMEOUT,
     UPDATE_INTERVAL_SECONDS,
@@ -31,6 +32,9 @@ _LOGGER = logging.getLogger(__name__)
 
 # Statuses where Lost Mode is on, or on its way on
 LOST_MODE_ON = {"ENABLED", "PENDING"}
+# Statuses where the device is still locked: includes REMOVING, because the device has not
+# yet confirmed that Lost Mode was removed
+LOST_MODE_ACTIVE = LOST_MODE_ON | {"REMOVING"}
 
 
 class JamfNowData:
@@ -65,6 +69,7 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
             raise ConfigEntryAuthFailed(str(err)) from err
         except JamfNowError as err:
             raise UpdateFailed(f"Error communicating with Jamf Now: {err}") from err
+        self._adjust_interval(devices)
         return JamfNowData(devices=devices, blueprints=blueprints)
 
     # ---- lookups ---------------------------------------------------------
@@ -98,6 +103,12 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
 
     async def _scheduled_refresh(self, _now) -> None:
         await self.async_request_refresh()
+
+    def _adjust_interval(self, devices: list[JamfNowDevice]) -> None:
+        pending = any(d.lost_mode in {"PENDING", "REMOVING"} for d in devices)
+        self.update_interval = timedelta(
+            seconds=FAST_UPDATE_INTERVAL_SECONDS if pending else UPDATE_INTERVAL_SECONDS
+        )
 
     def _cancel_timers(self) -> None:
         for cancel in self._refresh_timers:
@@ -177,8 +188,12 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
 
         if status == "REMOVING":
             # Wait for the disable to finish before turning it on again
-            await self._wait_for_lost_mode(device_id, {"DISABLED"})
-            status = "DISABLED"
+            status = await self._wait_for_lost_mode(device_id, {"DISABLED"})
+            if status != "DISABLED":
+                raise HomeAssistantError(
+                    "Lost Mode is still being removed (the device has not confirmed it); "
+                    "sound was not played and Lost Mode was not re-enabled"
+                )
         if status not in LOST_MODE_ON:
             message, phone = self.lost_mode_text(device_id)
             await self._call(

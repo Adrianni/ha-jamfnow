@@ -9,7 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .coordinator import LOST_MODE_ON, JamfNowDataUpdateCoordinator
+from .coordinator import LOST_MODE_ACTIVE, JamfNowDataUpdateCoordinator
 from .entity import JamfNowEntity, async_setup_device_entities
 
 
@@ -36,7 +36,12 @@ class JamfNowLostModeSwitch(JamfNowEntity, SwitchEntity):
         device = self.device
         if not device or device.lost_mode is None:
             return None
-        return device.lost_mode in LOST_MODE_ON
+        return device.lost_mode in LOST_MODE_ACTIVE
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        device = self.device
+        return {"lost_mode_status": device.lost_mode} if device else None
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self.coordinator.async_enable_lost_mode(self._device_id)

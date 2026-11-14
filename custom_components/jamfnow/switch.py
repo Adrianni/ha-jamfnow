@@ -44,7 +44,15 @@ class JamfNowLostModeSwitch(JamfNowEntity, SwitchEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         device = self.device
-        return {"lost_mode_status": device.lost_mode} if device else None
+        if not device:
+            return None
+        attrs: dict[str, Any] = {"lost_mode_status": device.lost_mode}
+        if device.passcode_change_allowed is False:
+            attrs["turn_on_blocked_reason"] = (
+                "Blueprint has 'Prevent changes to passcode' turned on. Turn it off in Jamf Now "
+                "to be able to enable Lost Mode"
+            )
+        return attrs
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self.coordinator.async_enable_lost_mode(self._device_id)

@@ -1,7 +1,7 @@
 """Constants for the Jamf Now integration."""
 
 DOMAIN = "jamfnow"
-PLATFORMS: list[str] = ["sensor", "select", "button", "switch", "text", "device_tracker"]
+PLATFORMS: list[str] = ["sensor", "binary_sensor", "select", "button", "switch", "text", "device_tracker"]
 
 CONF_BASE_URL = "base_url"
 

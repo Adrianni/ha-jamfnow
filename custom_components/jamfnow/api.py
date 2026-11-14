@@ -85,6 +85,8 @@ class JamfNowDevice:
     apps: list[JamfNowApp] = field(default_factory=list)
     # App Store allowed by the blueprint restrictions (None = unknown)
     app_store_allowed: bool | None = None
+    # Blueprint allows passcode changes, i.e. "Prevent changes to passcode" is off (None = unknown)
+    passcode_change_allowed: bool | None = None
 
 
 def _ts(value: Any) -> datetime | None:
@@ -380,6 +382,11 @@ class JamfNowClient:
         if isinstance(data, dict):
             return data
         raise JamfNowApiError("Unexpected restrictions response structure")
+
+    @staticmethod
+    def passcode_change_allowed(restrictions: Dict[str, Any]) -> bool:
+        """False when "Prevent changes to passcode" is on (allowPasscodeModification is false)."""
+        return restrictions.get("allowPasscodeModification") is not False
 
     @staticmethod
     def app_store_allowed(restrictions: Dict[str, Any]) -> bool:

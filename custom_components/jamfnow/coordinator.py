@@ -81,6 +81,7 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
             *(self.client.async_get_restrictions(b) for b in blueprint_ids), return_exceptions=True
         )
         allowed: dict[str, bool] = {}
+        passcode: dict[str, bool] = {}
         for blueprint_id, result in zip(blueprint_ids, results):
             if isinstance(result, JamfNowAuthError):
                 raise ConfigEntryAuthFailed(str(result)) from result
@@ -88,8 +89,12 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
                 _LOGGER.debug("Could not read restrictions for blueprint %s: %s", blueprint_id, result)
                 continue
             allowed[blueprint_id] = self.client.app_store_allowed(result)
+            passcode[blueprint_id] = self.client.passcode_change_allowed(result)
         for device in devices:
             device.app_store_allowed = allowed.get(device.blueprint_id) if device.blueprint_id else None
+            device.passcode_change_allowed = (
+                passcode.get(device.blueprint_id) if device.blueprint_id else None
+            )
 
     # ---- lookups ---------------------------------------------------------
     def device_present(self, device_id: str) -> bool:
@@ -165,6 +170,7 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
         clear_passcode: bool = True,
     ) -> None:
         self._require_supervised(device_id)
+        await self._require_passcode_change_allowed(device_id)
         if clear_passcode:
             await self._clear_passcode_first(device_id)
         saved_message, saved_phone = self.lost_mode_text(device_id)
@@ -179,40 +185,39 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
         )
         await self.async_refresh_after_command()
 
-    async def _passcode_change_blocked(self, device_id: str) -> bool:
-        """True if the device's blueprint has "Prevent changes to passcode" turned on.
+    async def _require_passcode_change_allowed(self, device_id: str) -> None:
+        """Refuse unless the blueprint has "Prevent changes to passcode" off (checked live).
 
-        Unknown (no blueprint, or restrictions could not be read) counts as not blocked.
+        Lost Mode relies on the passcode being cleared first, so it is only allowed when the
+        blueprint lets the passcode be changed. An unreadable blueprint also refuses.
         """
+        await self.async_refresh()
         device = self.get_device(device_id)
         if not device or not device.blueprint_id:
-            return False
+            raise HomeAssistantError(
+                "Lost Mode is not allowed: the device has no blueprint, so 'Prevent changes to "
+                "passcode' cannot be checked"
+            )
         try:
             restrictions = await self.client.async_get_restrictions(device.blueprint_id)
         except JamfNowError as err:
-            _LOGGER.debug("Could not read restrictions for %s: %s", device.blueprint_id, err)
-            return False
-        return restrictions.get("allowPasscodeModification") is False
+            raise HomeAssistantError(
+                f"Lost Mode is not allowed: could not check 'Prevent changes to passcode' ({err})"
+            ) from err
+        if not self.client.passcode_change_allowed(restrictions):
+            raise HomeAssistantError(
+                "Lost Mode is not allowed: the blueprint "
+                f"'{self.blueprint_name(device.blueprint_id)}' has 'Prevent changes to passcode' "
+                "turned on. Turn it off in Jamf Now (Blueprint > Restrictions > Security & Privacy) "
+                "and try again"
+            )
 
     async def _clear_passcode_first(self, device_id: str) -> None:
-        """Clear the passcode before Lost Mode; skipped (Lost Mode still goes ahead) if blocked."""
-        if await self._passcode_change_blocked(device_id):
-            _LOGGER.warning(
-                "Not clearing the passcode before Lost Mode on %s: its blueprint has "
-                "'Prevent changes to passcode' on. Turn that restriction off in Jamf Now so the "
-                "passcode can be cleared (Lost Mode is still turned on)",
-                device_id,
-            )
-            return
         await self._call(self.client.async_remove_passcode(device_id))
         await asyncio.sleep(CLEAR_PASSCODE_DELAY)
 
     async def async_clear_passcode(self, device_id: str) -> None:
-        if await self._passcode_change_blocked(device_id):
-            raise HomeAssistantError(
-                "The blueprint has 'Prevent changes to passcode' on, so the passcode cannot be "
-                "cleared. Turn that restriction off in Jamf Now first"
-            )
+        await self._require_passcode_change_allowed(device_id)
         await self._call(self.client.async_remove_passcode(device_id))
         await self.async_refresh_after_command()
 
@@ -254,6 +259,7 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
                     "sound was not played and Lost Mode was not re-enabled"
                 )
         if status not in LOST_MODE_ON:
+            await self._require_passcode_change_allowed(device_id)
             message, phone = self.lost_mode_text(device_id)
             await self._clear_passcode_first(device_id)
             await self._call(

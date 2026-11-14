@@ -120,6 +120,11 @@
       "location": {
         "name": "Location"
       }
+    },
+    "binary_sensor": {
+      "passcode_change_blocked": {
+        "name": "Lost Mode blocked (passcode)"
+      }
     }
   },
   "services": {

@@ -46,7 +46,7 @@ Jamf Now removed the old username/password form and now uses **Jamf ID**. This i
 | Entity | What it does |
 | --- | --- |
 | Switch **Lost Mode** | Turns Lost Mode on/off (supervised devices only) |
-| Switch **App Store** | On = App Store allowed, off = blocked. Changes the *blueprint* restrictions (App Usage → App Store, iPad and iPhone app), so it affects **every device on the same blueprint**. Status is read from the blueprint every 5 minutes |
+| Switch **App Store** | On = App Store allowed, off = blocked. Changes the *blueprint* restrictions (App Usage → App Store, iPad and iPhone app), so it affects **every device on the same blueprint**. Works with both "Hide some apps" (blocked list) and "Only allow some apps" (allow list) in the blueprint's App Usage. Status is read from the blueprint every 5 minutes |
 | Binary sensor **Can enable Lost Mode** | On when Lost Mode can be turned on. Off when the blueprint has "Prevent changes to passcode" turned on (the `reason` attribute says so); Lost Mode, Play sound (when it has to enable Lost Mode) and Clear passcode are then refused until the restriction is turned off in Jamf Now |
 | Text **Lock screen message** / **Lock screen phone number** | Text shown on the lock screen the next time Lost Mode is turned on |
 | Button **Play sound** | Plays the Lost Mode sound. If Lost Mode is off it is turned on first (using the lock screen message), and the sound is played when the device confirms |

@@ -390,21 +390,41 @@ class JamfNowClient:
 
     @staticmethod
     def app_store_allowed(restrictions: Dict[str, Any]) -> bool:
+        """Whether the App Store is usable under the blueprint's App Usage setting.
+
+        - "Only allow some apps": allowListedAppBundleIDs is non-empty, and only those apps work
+          (blockedAppBundleIDs is not used), so the App Store must be in that list.
+        - "Hide some apps": it works unless it is in blockedAppBundleIDs.
+        - "Allow all apps": both lists are empty, so it works.
+        """
+        allow_list = restrictions.get("allowListedAppBundleIDs") or []
+        if allow_list:
+            return APP_STORE_BUNDLE_ID in allow_list
         return APP_STORE_BUNDLE_ID not in (restrictions.get("blockedAppBundleIDs") or [])
 
     async def async_set_app_store_allowed(self, blueprint_id: str, allowed: bool) -> None:
-        """Allow or block the App Store by editing the blueprint's blocked app list.
+        """Allow or block the App Store by editing the blueprint's App Usage lists.
 
-        The whole restrictions object is posted back (that is what the Jamf Now site does), so the
-        current object is read right before and only blockedAppBundleIDs is changed.
+        Depending on the blueprint's mode this edits the allow list ("Only allow some apps") or
+        the blocked list ("Hide some apps"). The whole restrictions object is posted back (that is
+        what the Jamf Now site does), so the current object is read right before and only the
+        relevant list is changed.
         """
         restrictions = await self.async_get_restrictions(blueprint_id)
-        if restrictions.get("allowListedAppBundleIDs"):
-            raise JamfNowApiError(
-                "The blueprint uses 'Only allow some apps'; App Store control is not supported"
-            )
+        allow_list = list(restrictions.get("allowListedAppBundleIDs") or [])
         blocked = [b for b in (restrictions.get("blockedAppBundleIDs") or []) if b != APP_STORE_BUNDLE_ID]
-        if not allowed:
+        if allow_list:
+            allow_list = [b for b in allow_list if b != APP_STORE_BUNDLE_ID]
+            if allowed:
+                allow_list.append(APP_STORE_BUNDLE_ID)
+            elif not allow_list:
+                # An empty allow list means "no allow list": Jamf Now would stop restricting apps
+                raise JamfNowApiError(
+                    "The App Store is the only allowed app on this blueprint; blocking it would "
+                    "make every app allowed. Change App Usage in Jamf Now instead"
+                )
+            restrictions["allowListedAppBundleIDs"] = allow_list
+        elif not allowed:
             blocked.append(APP_STORE_BUNDLE_ID)
         restrictions["blockedAppBundleIDs"] = blocked
         await self._request("POST", f"/frontend/rest/restrictions/blueprints/{blueprint_id}", json=restrictions)

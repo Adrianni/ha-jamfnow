@@ -21,3 +21,8 @@ SERVICE_PLAY_SOUND = "play_sound"
 SERVICE_RESTART_DEVICE = "restart_device"
 SERVICE_SHUTDOWN_DEVICE = "shutdown_device"
 SERVICE_SYNC_INVENTORY = "sync_inventory"
+SERVICE_CLEAR_PASSCODE = "clear_passcode"
+
+# Clear the passcode before Lost Mode so Wi-Fi stays usable and the device can be unlocked again;
+# wait so the clear command reaches the device first
+CLEAR_PASSCODE_DELAY = 5

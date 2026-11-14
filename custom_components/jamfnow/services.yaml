@@ -38,6 +38,10 @@ enable_lost_mode:
       example: true
       selector:
         boolean: null
+    clear_passcode:
+      default: true
+      selector:
+        boolean: null
 disable_lost_mode:
   fields:
     device_id:
@@ -71,6 +75,14 @@ shutdown_device:
           integration: jamfnow
           multiple: true
 sync_inventory:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: jamfnow
+          multiple: true
+clear_passcode:
   fields:
     device_id:
       required: true

@@ -21,6 +21,7 @@ from .api import (
     JamfNowError,
 )
 from .const import (
+    CLEAR_PASSCODE_DELAY,
     DOMAIN,
     FAST_UPDATE_INTERVAL_SECONDS,
     LOST_MODE_POLL_INTERVAL,
@@ -143,8 +144,11 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
         phone: str | None = None,
         footnote: str | None = None,
         play_sound: bool | None = None,
+        clear_passcode: bool = True,
     ) -> None:
         self._require_supervised(device_id)
+        if clear_passcode:
+            await self._clear_passcode_first(device_id)
         saved_message, saved_phone = self.lost_mode_text(device_id)
         await self._call(
             self.client.async_enable_lost_mode(
@@ -155,6 +159,14 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
                 play_sound=play_sound,
             )
         )
+        await self.async_refresh_after_command()
+
+    async def _clear_passcode_first(self, device_id: str) -> None:
+        await self._call(self.client.async_remove_passcode(device_id))
+        await asyncio.sleep(CLEAR_PASSCODE_DELAY)
+
+    async def async_clear_passcode(self, device_id: str) -> None:
+        await self._call(self.client.async_remove_passcode(device_id))
         await self.async_refresh_after_command()
 
     async def async_disable_lost_mode(self, device_id: str) -> None:
@@ -196,6 +208,7 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
                 )
         if status not in LOST_MODE_ON:
             message, phone = self.lost_mode_text(device_id)
+            await self._clear_passcode_first(device_id)
             await self._call(
                 self.client.async_enable_lost_mode(device_id, message=message, phone=phone)
             )

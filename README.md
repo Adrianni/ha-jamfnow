@@ -48,7 +48,8 @@ Jamf Now removed the old username/password form and now uses **Jamf ID**. This i
 | Switch **Lost Mode** | Turns Lost Mode on/off (supervised devices only) |
 | Text **Lock screen message** / **Lock screen phone number** | Text shown on the lock screen the next time Lost Mode is turned on |
 | Button **Play sound** | Plays the Lost Mode sound. If Lost Mode is off it is turned on first (using the lock screen message), and the sound is played when the device confirms |
-| Button **Restart** | Restarts the device |
+| Button **Clear passcode** | Clears the passcode (Jamf Now "Unlock device"); the user has 60 minutes to set a new one. It is also sent automatically 5 s before Lost Mode is turned on |
+| Button **Restart** | Restarts the device, unavailable while Lost Mode is on or being removed |
 | Select **Blueprint** | Moves the device to another blueprint |
 | Device tracker **Location** | Last location reported by Lost Mode |
 
@@ -56,7 +57,7 @@ Status changes are polled every 5 minutes, and refreshed again 15 s and 60 s aft
 
 ## Services
 
-All services target one or more Jamf Now devices (device picker): `jamfnow.enable_lost_mode` (`message`, `phone`, `footnote`, `play_sound`), `jamfnow.disable_lost_mode`, `jamfnow.play_sound`, `jamfnow.restart_device`, `jamfnow.shutdown_device`, `jamfnow.sync_inventory`, `jamfnow.set_blueprint` (`blueprint_id`).
+All services target one or more Jamf Now devices (device picker): `jamfnow.enable_lost_mode` (`message`, `phone`, `footnote`, `play_sound`, `clear_passcode`, default on), `jamfnow.clear_passcode`, `jamfnow.disable_lost_mode`, `jamfnow.play_sound`, `jamfnow.restart_device`, `jamfnow.shutdown_device`, `jamfnow.sync_inventory`, `jamfnow.set_blueprint` (`blueprint_id`).
 
 ## Notes
 

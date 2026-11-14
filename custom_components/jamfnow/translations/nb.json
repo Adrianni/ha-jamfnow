@@ -103,6 +103,9 @@
       },
       "restart": {
         "name": "Start på nytt"
+      },
+      "clear_passcode": {
+        "name": "Fjern passord"
       }
     },
     "select": {
@@ -154,6 +157,10 @@
         "play_sound": {
           "name": "Spill av lyd",
           "description": "Spill av lyd umiddelbart."
+        },
+        "clear_passcode": {
+          "name": "Fjern passord først",
+          "description": "Fjerner passordkoden noen sekunder før Lost Mode slås på (standard på)."
         }
       }
     },
@@ -200,6 +207,16 @@
     "sync_inventory": {
       "name": "Synkroniser inventar",
       "description": "Start en inventarsynkronisering på enheten.",
+      "fields": {
+        "device_id": {
+          "name": "Enhet",
+          "description": "Jamf Now-enheten(e) kommandoen skal sendes til."
+        }
+      }
+    },
+    "clear_passcode": {
+      "name": "Fjern passord",
+      "description": "Fjerner passordkoden (Unlock device). Brukeren har 60 minutter på å sette en ny.",
       "fields": {
         "device_id": {
           "name": "Enhet",

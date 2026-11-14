@@ -17,6 +17,7 @@ from .const import (
     DEFAULT_BASE_URL,
     DOMAIN,
     PLATFORMS,
+    SERVICE_CLEAR_PASSCODE,
     SERVICE_DISABLE_LOST_MODE,
     SERVICE_ENABLE_LOST_MODE,
     SERVICE_PLAY_SOUND,
@@ -128,6 +129,7 @@ def _register_services(hass: HomeAssistant) -> None:
                 phone=call.data.get("phone"),
                 footnote=call.data.get("footnote"),
                 play_sound=call.data.get("play_sound"),
+                clear_passcode=call.data.get("clear_passcode", True),
             )
 
     base = {vol.Optional("entity_id"): cv.match_all, **DEVICE_SCHEMA}
@@ -150,6 +152,7 @@ def _register_services(hass: HomeAssistant) -> None:
                 vol.Optional("phone"): cv.string,
                 vol.Optional("footnote"): cv.string,
                 vol.Optional("play_sound"): cv.boolean,
+                vol.Optional("clear_passcode"): cv.boolean,
             },
             extra=vol.ALLOW_EXTRA,
         ),
@@ -157,6 +160,7 @@ def _register_services(hass: HomeAssistant) -> None:
     for service, method in (
         (SERVICE_DISABLE_LOST_MODE, "async_disable_lost_mode"),
         (SERVICE_PLAY_SOUND, "async_play_sound"),
+        (SERVICE_CLEAR_PASSCODE, "async_clear_passcode"),
         (SERVICE_RESTART_DEVICE, "async_restart"),
         (SERVICE_SHUTDOWN_DEVICE, "async_power_off"),
         (SERVICE_SYNC_INVENTORY, "async_sync_inventory"),

@@ -30,6 +30,11 @@ BUTTON_DESCRIPTIONS: tuple[JamfNowButtonDescription, ...] = (
         press_fn=lambda coordinator, device_id: coordinator.async_play_sound(device_id),
     ),
     JamfNowButtonDescription(
+        key="clear_passcode",
+        translation_key="clear_passcode",
+        press_fn=lambda coordinator, device_id: coordinator.async_clear_passcode(device_id),
+    ),
+    JamfNowButtonDescription(
         key="restart",
         translation_key="restart",
         device_class=ButtonDeviceClass.RESTART,

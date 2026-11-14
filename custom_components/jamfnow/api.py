@@ -367,6 +367,10 @@ class JamfNowClient:
         """Play the lost-mode sound (only works while Lost Mode is enabled)."""
         await self._request("POST", f"/frontend/rest/devices/{device_id}/lost/playsound")
 
+    async def async_remove_passcode(self, device_id: str) -> None:
+        """Clear the passcode (Jamf Now "Unlock device"); the user gets 60 minutes to set a new one."""
+        await self._request("POST", f"/frontend/rest/devices/{device_id}/removepasscode")
+
     async def async_restart_device(self, device_id: str) -> None:
         await self._request("POST", f"/frontend/rest/devices/{device_id}/restart")
 

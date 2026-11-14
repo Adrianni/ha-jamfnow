@@ -103,6 +103,9 @@
       },
       "restart": {
         "name": "Restart"
+      },
+      "clear_passcode": {
+        "name": "Clear passcode"
       }
     },
     "select": {
@@ -154,6 +157,10 @@
         "play_sound": {
           "name": "Play sound",
           "description": "Play a sound immediately."
+        },
+        "clear_passcode": {
+          "name": "Clear passcode first",
+          "description": "Clear the passcode a few seconds before enabling Lost Mode (default on)."
         }
       }
     },
@@ -200,6 +207,16 @@
     "sync_inventory": {
       "name": "Sync inventory",
       "description": "Trigger an inventory sync on the device.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The Jamf Now device(s) to send the command to."
+        }
+      }
+    },
+    "clear_passcode": {
+      "name": "Clear passcode",
+      "description": "Clear the passcode (Unlock device). The user has 60 minutes to set a new one.",
       "fields": {
         "device_id": {
           "name": "Device",

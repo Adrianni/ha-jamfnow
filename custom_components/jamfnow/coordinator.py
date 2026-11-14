@@ -256,10 +256,20 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
     async def async_set_app_store(self, device_id: str, allowed: bool) -> None:
         """Allow/block the App Store. This changes the device's blueprint, so it affects every
         device that uses the same blueprint."""
+        # Re-read first so the device's blueprint is current, not up to 5 minutes old
+        await self.async_refresh()
         device = self.get_device(device_id)
         if not device or not device.blueprint_id:
             raise HomeAssistantError("The device has no blueprint, so the App Store cannot be changed")
-        await self._call(self.client.async_set_app_store_allowed(device.blueprint_id, allowed))
+        blueprint_id = device.blueprint_id
+        await self._call(self.client.async_set_app_store_allowed(blueprint_id, allowed))
+        # Verify that this device's blueprint (and only it) now has the wanted value
+        try:
+            restrictions = await self.client.async_get_restrictions(blueprint_id)
+        except JamfNowError as err:
+            raise HomeAssistantError(f"Could not verify the App Store change: {err}") from err
+        if self.client.app_store_allowed(restrictions) != allowed:
+            raise HomeAssistantError("Jamf Now did not apply the App Store change")
         await self.async_refresh_after_command()
 
     async def async_restart(self, device_id: str) -> None:

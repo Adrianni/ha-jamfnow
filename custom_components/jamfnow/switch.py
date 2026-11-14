@@ -71,7 +71,10 @@ class JamfNowAppStoreSwitch(JamfNowEntity, SwitchEntity):
         device = self.device
         if not device:
             return None
-        return {"blueprint": self.coordinator.blueprint_name(device.blueprint_id)}
+        return {
+            "blueprint": self.coordinator.blueprint_name(device.blueprint_id),
+            "blueprint_id": device.blueprint_id,
+        }
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self.coordinator.async_set_app_store(self._device_id, True)

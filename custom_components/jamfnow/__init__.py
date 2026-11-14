@@ -72,6 +72,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: ConfigEntry, device_entry: dr.DeviceEntry
+) -> bool:
+    """Allow deleting a device only when it no longer exists in Jamf Now."""
+    coordinator: JamfNowDataUpdateCoordinator = entry.runtime_data
+    return not any(
+        identifier[0] == DOMAIN and coordinator.device_present(identifier[1])
+        for identifier in device_entry.identifiers
+    )
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 

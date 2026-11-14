@@ -19,6 +19,8 @@ class JamfNowButtonDescription(ButtonEntityDescription):
     """Describes one Jamf Now button."""
 
     press_fn: Callable[[JamfNowDataUpdateCoordinator, str], Awaitable[None]]
+    # Button is unavailable while Lost Mode is on or pending removal
+    blocked_in_lost_mode: bool = False
 
 
 BUTTON_DESCRIPTIONS: tuple[JamfNowButtonDescription, ...] = (
@@ -31,6 +33,7 @@ BUTTON_DESCRIPTIONS: tuple[JamfNowButtonDescription, ...] = (
         key="restart",
         translation_key="restart",
         device_class=ButtonDeviceClass.RESTART,
+        blocked_in_lost_mode=True,
         press_fn=lambda coordinator, device_id: coordinator.async_restart(device_id),
     ),
 )
@@ -61,6 +64,14 @@ class JamfNowButton(JamfNowEntity, ButtonEntity):
     ) -> None:
         super().__init__(coordinator, device_id, f"{description.key}_button")
         self.entity_description = description
+
+    @property
+    def available(self) -> bool:
+        if self.entity_description.blocked_in_lost_mode and self.coordinator.is_lost_mode_active(
+            self._device_id
+        ):
+            return False
+        return super().available
 
     async def async_press(self) -> None:
         await self.entity_description.press_fn(self.coordinator, self._device_id)

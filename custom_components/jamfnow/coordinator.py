@@ -210,11 +210,25 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
         await self._call(self.client.async_play_lost_mode_sound(device_id))
         await self.async_refresh_after_command()
 
+    def _block_during_lost_mode(self, device_id: str) -> None:
+        """Restart/power off can drop Wi-Fi and strand a device in Lost Mode."""
+        if self.is_lost_mode_active(device_id):
+            raise HomeAssistantError(
+                "Not allowed while Lost Mode is on or pending removal: the device could lose "
+                "Wi-Fi and then never receive the command that disables Lost Mode"
+            )
+
+    def is_lost_mode_active(self, device_id: str) -> bool:
+        device = self.get_device(device_id)
+        return bool(device and device.lost_mode in LOST_MODE_ACTIVE)
+
     async def async_restart(self, device_id: str) -> None:
+        self._block_during_lost_mode(device_id)
         await self._call(self.client.async_restart_device(device_id))
         await self.async_refresh_after_command()
 
     async def async_power_off(self, device_id: str) -> None:
+        self._block_during_lost_mode(device_id)
         await self._call(self.client.async_shutdown_device(device_id))
         await self.async_refresh_after_command()
 

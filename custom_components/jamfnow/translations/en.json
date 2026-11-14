@@ -87,6 +87,9 @@
     "switch": {
       "lost_mode_switch": {
         "name": "Lost Mode"
+      },
+      "app_store_switch": {
+        "name": "App Store"
       }
     },
     "text": {

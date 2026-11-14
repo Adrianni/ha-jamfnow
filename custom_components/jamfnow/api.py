@@ -13,6 +13,8 @@ import aiohttp
 
 LOGIN_TIMEOUT = aiohttp.ClientTimeout(total=30)
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=30)
+# Bundle id of the iPad/iPhone App Store (com.apple.TVAppStore is the Apple TV one, never touch it)
+APP_STORE_BUNDLE_ID = "com.apple.AppStore"
 DEFAULT_LOST_MESSAGE = "Lost mode enabled via Home Assistant"
 
 _HIDDEN_INPUT_RE = re.compile(r'<input\b[^>]*>', re.I)
@@ -81,6 +83,8 @@ class JamfNowDevice:
     location_time: datetime | None = None
     profiles: dict[str, str] = field(default_factory=dict)
     apps: list[JamfNowApp] = field(default_factory=list)
+    # App Store allowed by the blueprint restrictions (None = unknown)
+    app_store_allowed: bool | None = None
 
 
 def _ts(value: Any) -> datetime | None:
@@ -370,6 +374,33 @@ class JamfNowClient:
     async def async_remove_passcode(self, device_id: str) -> None:
         """Clear the passcode (Jamf Now "Unlock device"); the user gets 60 minutes to set a new one."""
         await self._request("POST", f"/frontend/rest/devices/{device_id}/removepasscode")
+
+    async def async_get_restrictions(self, blueprint_id: str) -> Dict[str, Any]:
+        data = await self._request("GET", f"/frontend/rest/restrictions/blueprints/{blueprint_id}")
+        if isinstance(data, dict):
+            return data
+        raise JamfNowApiError("Unexpected restrictions response structure")
+
+    @staticmethod
+    def app_store_allowed(restrictions: Dict[str, Any]) -> bool:
+        return APP_STORE_BUNDLE_ID not in (restrictions.get("blockedAppBundleIDs") or [])
+
+    async def async_set_app_store_allowed(self, blueprint_id: str, allowed: bool) -> None:
+        """Allow or block the App Store by editing the blueprint's blocked app list.
+
+        The whole restrictions object is posted back (that is what the Jamf Now site does), so the
+        current object is read right before and only blockedAppBundleIDs is changed.
+        """
+        restrictions = await self.async_get_restrictions(blueprint_id)
+        if restrictions.get("allowListedAppBundleIDs"):
+            raise JamfNowApiError(
+                "The blueprint uses 'Only allow some apps'; App Store control is not supported"
+            )
+        blocked = [b for b in (restrictions.get("blockedAppBundleIDs") or []) if b != APP_STORE_BUNDLE_ID]
+        if not allowed:
+            blocked.append(APP_STORE_BUNDLE_ID)
+        restrictions["blockedAppBundleIDs"] = blocked
+        await self._request("POST", f"/frontend/rest/restrictions/blueprints/{blueprint_id}", json=restrictions)
 
     async def async_restart_device(self, device_id: str) -> None:
         await self._request("POST", f"/frontend/rest/devices/{device_id}/restart")

@@ -70,8 +70,26 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
             raise ConfigEntryAuthFailed(str(err)) from err
         except JamfNowError as err:
             raise UpdateFailed(f"Error communicating with Jamf Now: {err}") from err
+        await self._apply_restrictions(devices)
         self._adjust_interval(devices)
         return JamfNowData(devices=devices, blueprints=blueprints)
+
+    async def _apply_restrictions(self, devices: list[JamfNowDevice]) -> None:
+        """Read the App Store restriction once per blueprint (failures leave it unknown)."""
+        blueprint_ids = sorted({d.blueprint_id for d in devices if d.blueprint_id})
+        results = await asyncio.gather(
+            *(self.client.async_get_restrictions(b) for b in blueprint_ids), return_exceptions=True
+        )
+        allowed: dict[str, bool] = {}
+        for blueprint_id, result in zip(blueprint_ids, results):
+            if isinstance(result, JamfNowAuthError):
+                raise ConfigEntryAuthFailed(str(result)) from result
+            if isinstance(result, Exception):
+                _LOGGER.debug("Could not read restrictions for blueprint %s: %s", blueprint_id, result)
+                continue
+            allowed[blueprint_id] = self.client.app_store_allowed(result)
+        for device in devices:
+            device.app_store_allowed = allowed.get(device.blueprint_id) if device.blueprint_id else None
 
     # ---- lookups ---------------------------------------------------------
     def device_present(self, device_id: str) -> bool:
@@ -234,6 +252,15 @@ class JamfNowDataUpdateCoordinator(DataUpdateCoordinator[JamfNowData]):
     def is_lost_mode_active(self, device_id: str) -> bool:
         device = self.get_device(device_id)
         return bool(device and device.lost_mode in LOST_MODE_ACTIVE)
+
+    async def async_set_app_store(self, device_id: str, allowed: bool) -> None:
+        """Allow/block the App Store. This changes the device's blueprint, so it affects every
+        device that uses the same blueprint."""
+        device = self.get_device(device_id)
+        if not device or not device.blueprint_id:
+            raise HomeAssistantError("The device has no blueprint, so the App Store cannot be changed")
+        await self._call(self.client.async_set_app_store_allowed(device.blueprint_id, allowed))
+        await self.async_refresh_after_command()
 
     async def async_restart(self, device_id: str) -> None:
         self._block_during_lost_mode(device_id)
